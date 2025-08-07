@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net472</TargetFramework>
+        <AssemblyName>ExtraTweaks</AssemblyName>
+        <Product>Nekogiri Extra Tweaks</Product>
+        <Version>0.0.1</Version>
+        <Authors>Bread-Chan,Kirigiri</Authors>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <RestoreAdditionalProjectSources>
+            https://api.nuget.org/v3/index.json;
+            https://nuget.bepinex.dev/v3/index.json;
+            https://nuget.samboy.dev/v3/index.json
+        </RestoreAdditionalProjectSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all"/>
+        <PackageReference Include="BepInEx.Core" Version="5.*"/>
+        <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*"/>
+        <PackageReference Include="UnityEngine.Modules" Version="2022.3.16" IncludeAssets="compile"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <Optimize>true</Optimize>
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+        <GenerateDebugInfo>false</GenerateDebugInfo>
+        <DefineConstants>TRACE</DefineConstants>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <Deterministic>true</Deterministic>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <GameFolder>..\..\..\..\..\SteamLibrary\steamapps\common\PEAK\PEAK_Data\Managed\</GameFolder>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>$(GameFolder)Assembly-CSharp.dll</HintPath>
+        </Reference>
+        <Reference Include="com.rlabrecque.steamworks.net">
+            <HintPath>$(GameFolder)com.rlabrecque.steamworks.net.dll</HintPath>
+        </Reference>
+        <Reference Include="Photon3Unity3D">
+            <HintPath>$(GameFolder)Photon3Unity3D.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonChat">
+            <HintPath>$(GameFolder)PhotonChat.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonRealtime">
+            <HintPath>$(GameFolder)PhotonRealtime.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonUnityNetworking">
+            <HintPath>$(GameFolder)PhotonUnityNetworking.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonVoice">
+            <HintPath>$(GameFolder)PhotonVoice.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonVoice.API">
+            <HintPath>$(GameFolder)PhotonVoice.API.dll</HintPath>
+        </Reference>
+        <Reference Include="PhotonVoice.PUN">
+            <HintPath>$(GameFolder)PhotonVoice.PUN.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>$(GameFolder)UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(GameFolder)UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="Zorro.Core.Runtime">
+            <HintPath>$(GameFolder)Zorro.Core.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Update="@(Reference)">
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+</Project>
