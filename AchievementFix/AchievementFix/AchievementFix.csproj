@@ -4,7 +4,7 @@
         <TargetFramework>net472</TargetFramework>
         <Product>AchievementFix</Product>
         <Authors>Bread-Chan,Kirigiri</Authors>
-        <Version>0.0.1</Version>
+        <Version>0.0.2</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>

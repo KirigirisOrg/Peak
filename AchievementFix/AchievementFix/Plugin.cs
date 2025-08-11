@@ -60,12 +60,10 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(SteamUserStats), "SetAchievement")]
         [HarmonyPrefix]
-        private static bool SetAchievement(string pchName)
+        private static void SetAchievement(string pchName)
         {
             _achievementStates[pchName] = true;
             SaveAchievements();
-
-            return false;
         }
 
         #endregion
@@ -90,7 +88,7 @@ public class Plugin : BaseUnityPlugin
             public static void Postfix(string pchName, ref int pData, ref bool __result, ref bool __runOriginal)
             {
                 if (!_statStatesInt.ContainsKey(pchName)) SetStat(pchName, pData);
-                pData = GetStatInt(pchName);
+                pData = GetStat<int>(pchName);
                 __result = true;
                 __runOriginal = false;
             }
@@ -116,7 +114,7 @@ public class Plugin : BaseUnityPlugin
             public static void Postfix(string pchName, ref float pData, ref bool __result, ref bool __runOriginal)
             {
                 if (!_statStatesFloat.ContainsKey(pchName)) SetStat(pchName, pData);
-                pData = GetStatFloat(pchName);
+                pData = GetStat<float>(pchName);
                 __result = true;
                 __runOriginal = false;
             }
@@ -217,23 +215,31 @@ public class Plugin : BaseUnityPlugin
         }
     }
 
-    private static void SetStat(string name, int value)
+    private static void SetStat<T>(string name, T value) where T : struct
     {
-        _statStatesInt[name] = value;
+        if (typeof(T) == typeof(int))
+            _statStatesInt[name] = (int)(object)value;
+        else if (typeof(T) == typeof(float))
+            _statStatesFloat[name] = (float)(object)value;
+        else
+            throw new NotSupportedException($"Type {typeof(T)} not supported");
         SaveStats();
     }
 
-    private static void SetStat(string name, float value)
+    private static T GetStat<T>(string name, T defaultValue = default) where T : struct
     {
-        _statStatesFloat[name] = value;
-        SaveStats();
+        if (typeof(T) == typeof(int))
+            return _statStatesInt.TryGetValue(name, out var value)
+                ? (T)(object)value
+                : defaultValue;
+
+        if (typeof(T) == typeof(float))
+            return _statStatesFloat.TryGetValue(name, out var value)
+                ? (T)(object)value
+                : defaultValue;
+
+        throw new NotSupportedException($"Type {typeof(T)} not supported");
     }
-
-    private static int GetStatInt(string name, int defaultValue = 0) =>
-        _statStatesInt.TryGetValue(name, out var value) ? value : defaultValue;
-
-    private static float GetStatFloat(string name, float defaultValue = 0f) =>
-        _statStatesFloat.TryGetValue(name, out var value) ? value : defaultValue;
 
     #endregion
 
