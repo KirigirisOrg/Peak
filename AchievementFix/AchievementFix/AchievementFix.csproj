@@ -4,7 +4,7 @@
         <TargetFramework>net472</TargetFramework>
         <Product>AchievementFix</Product>
         <Authors>Bread-Chan,Kirigiri</Authors>
-        <Version>0.0.2</Version>
+        <Version>0.0.3</Version>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <RestoreAdditionalProjectSources>
@@ -52,6 +52,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>$(GameFolder)Assembly-CSharp.dll</HintPath>
+        </Reference>
         <Reference Include="com.rlabrecque.steamworks.net">
             <HintPath>$(GameFolder)com.rlabrecque.steamworks.net.dll</HintPath>
         </Reference>
@@ -60,6 +63,18 @@
         </Reference>
         <Reference Include="Newtonsoft.Json">
             <HintPath>$(GameFolder)Newtonsoft.Json.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.TextMeshPro">
+            <HintPath>$(GameFolder)Unity.TextMeshPro.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(GameFolder)UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.UI">
+            <HintPath>$(GameFolder)UnityEngine.UI.dll</HintPath>
+        </Reference>
+        <Reference Include="Zorro.Core.Runtime">
+            <HintPath>$(GameFolder)Zorro.Core.Runtime.dll</HintPath>
         </Reference>
         <Reference Update="@(Reference)">
             <Private>false</Private>

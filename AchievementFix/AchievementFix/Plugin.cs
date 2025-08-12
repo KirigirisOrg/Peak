@@ -7,6 +7,10 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Newtonsoft.Json;
 using Steamworks;
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace AchievementFix;
 
@@ -14,6 +18,7 @@ namespace AchievementFix;
 public class Plugin : BaseUnityPlugin
 {
     private static ManualLogSource _logger;
+    private static GameObject _popupCanvas;
 
     private static readonly string DataPath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NekogiriBread");
@@ -24,6 +29,8 @@ public class Plugin : BaseUnityPlugin
     private static Dictionary<string, bool> _achievementStates;
     private static Dictionary<string, int> _statStatesInt = new();
     private static Dictionary<string, float> _statStatesFloat = new();
+    private static Material _uiWoodMaterial;
+    private static TMP_FontAsset darumaFont;
 
     private void Awake()
     {
@@ -39,6 +46,30 @@ public class Plugin : BaseUnityPlugin
         harmony.PatchAll(typeof(SteamPatches));
         harmony.PatchAll(typeof(SteamPatches.GetStatFloatPatch));
         harmony.PatchAll(typeof(SteamPatches.GetStatIntPatch));
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name is "Title") FindResources();
+    }
+
+    private static void FindResources()
+    {
+        foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
+            if (mat.name == "UI_Wood")
+            {
+                _uiWoodMaterial = mat;
+                break;
+            }
+
+        foreach (var font in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
+            if (font.name == "DarumaDropOne-Regular SDF")
+            {
+                darumaFont = font;
+                break;
+            }
     }
 
     private class SteamPatches
@@ -47,7 +78,7 @@ public class Plugin : BaseUnityPlugin
 
         [HarmonyPatch(typeof(SteamUserStats), "GetAchievement")]
         [HarmonyPostfix]
-        private static void GetAchievement(string pchName, ref bool pbAchieved)
+        public static void GetAchievement(string pchName, ref bool pbAchieved)
         {
             if (!_achievementStates.ContainsKey(pchName))
             {
@@ -63,6 +94,7 @@ public class Plugin : BaseUnityPlugin
         private static void SetAchievement(string pchName)
         {
             _achievementStates[pchName] = true;
+            if (Enum.TryParse<ACHIEVEMENTTYPE>(pchName, out var achievement)) TriggerAch(achievement);
             SaveAchievements();
         }
 
@@ -129,9 +161,145 @@ public class Plugin : BaseUnityPlugin
         #endregion
     }
 
+    #region UI
+
+    private static void TriggerAch(ACHIEVEMENTTYPE ach)
+    {
+        var badgeData = GUIManager.instance.mainBadgeManager.GetBadgeData(ach);
+
+        if (badgeData == null) return;
+
+        var displayName = badgeData.displayName;
+        var description = badgeData.description;
+        var iconTexture = badgeData.icon;
+
+        Sprite iconSprite = null;
+        if (iconTexture != null)
+        {
+            var tex2D = iconTexture as Texture2D;
+            if (tex2D != null)
+                iconSprite = Sprite.Create(tex2D, new Rect(0, 0, tex2D.width, tex2D.height), new Vector2(0.5f, 0.5f));
+        }
+
+        ShowPopup(displayName, description, iconSprite);
+    }
+
+
+    private static void ShowPopup(string title, string description, Sprite icon)
+    {
+        if (_popupCanvas == null)
+        {
+            _popupCanvas = new GameObject("AchievementPopupCanvas");
+            var canvas = _popupCanvas.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _popupCanvas.AddComponent<CanvasScaler>();
+            _popupCanvas.AddComponent<GraphicRaycaster>();
+            DontDestroyOnLoad(_popupCanvas);
+        }
+
+        var go = new GameObject("AchievementPopup");
+        go.transform.SetParent(_popupCanvas.transform, false);
+
+        var bg = go.AddComponent<Image>();
+        bg.material = _uiWoodMaterial;
+        bg.color = new Color(0.783f, 0.6374f, 0.4765f, 1f);
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(350, 100);
+        rt.anchorMin = new Vector2(1, 0);
+        rt.anchorMax = new Vector2(1, 0);
+        rt.pivot = new Vector2(1, 0);
+        rt.anchoredPosition = new Vector2(-10, 10);
+
+        if (icon != null)
+        {
+            var iconGo = new GameObject("Icon");
+            iconGo.transform.SetParent(go.transform, false);
+            var img = iconGo.AddComponent<Image>();
+            img.sprite = icon;
+            img.preserveAspect = true;
+            var iconRT = iconGo.GetComponent<RectTransform>();
+            iconRT.anchorMin = new Vector2(0, 0.5f);
+            iconRT.anchorMax = new Vector2(0, 0.5f);
+            iconRT.pivot = new Vector2(0, 0.5f);
+            iconRT.sizeDelta = new Vector2(75, 75);
+            iconRT.anchoredPosition = new Vector2(10, 0);
+        }
+
+        var textParent = new GameObject("TextParent");
+        textParent.transform.SetParent(go.transform, false);
+        var textRT = textParent.AddComponent<RectTransform>();
+        textRT.anchorMin = new Vector2(0, 0);
+        textRT.anchorMax = new Vector2(1, 1);
+        textRT.offsetMin = new Vector2(90, 10);
+        textRT.offsetMax = new Vector2(-10, -10);
+
+        var titleText = new GameObject("TitleText");
+        titleText.transform.SetParent(textParent.transform, false);
+        var titleTMP = titleText.AddComponent<TextMeshProUGUI>();
+        titleTMP.font = darumaFont;
+        titleTMP.fontSize = 25;
+        titleTMP.color = new Color(0.184f, 0.122f, 0.059f, 1);
+        titleTMP.text = title;
+        titleTMP.textWrappingMode = TextWrappingModes.Normal;
+        titleTMP.rectTransform.anchorMin = new Vector2(0, 0.5f);
+        titleTMP.rectTransform.anchorMax = new Vector2(1, 1);
+        titleTMP.rectTransform.offsetMin = Vector2.zero;
+        titleTMP.rectTransform.offsetMax = Vector2.zero;
+
+        var descText = new GameObject("DescriptionText");
+        descText.transform.SetParent(textParent.transform, false);
+        var descTMP = descText.AddComponent<TextMeshProUGUI>();
+        descTMP.font = darumaFont;
+        descTMP.fontSize = 18;
+        descTMP.color = new Color(0.368f, 0.257f, 0.12f, 1);
+        descTMP.text = description;
+        descTMP.textWrappingMode = TextWrappingModes.Normal;
+        descTMP.rectTransform.anchorMin = new Vector2(0, 0);
+        descTMP.rectTransform.anchorMax = new Vector2(1, 0.5f);
+        descTMP.rectTransform.offsetMin = Vector2.zero;
+        descTMP.rectTransform.offsetMax = Vector2.zero;
+
+        go.AddComponent<CanvasGroup>();
+
+        go.AddComponent<AchievementPopupFade>();
+    }
+
+    private class AchievementPopupFade : MonoBehaviour
+    {
+        private const float DisplayTime = 1.5f;
+        private const float FadeDuration = 1.5f;
+        private CanvasGroup _canvasGroup;
+        private float _timer;
+
+        private void Awake()
+        {
+            _canvasGroup = GetComponent<CanvasGroup>();
+            if (_canvasGroup == null)
+                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
+            _canvasGroup.alpha = 1f;
+            _timer = 0f;
+        }
+
+        private void Update()
+        {
+            _timer += Time.deltaTime;
+
+            if (!(_timer > DisplayTime)) return;
+            var fadeTime = _timer - DisplayTime;
+            _canvasGroup.alpha = 1f - fadeTime / FadeDuration;
+
+            if (fadeTime >= FadeDuration)
+                Destroy(gameObject);
+        }
+    }
+
+    #endregion
+
     #region Helper Functions
 
-    #region Achievement
+    #region Achievements
 
     private static void LoadAchievements()
     {
