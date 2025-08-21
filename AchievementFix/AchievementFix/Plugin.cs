@@ -26,7 +26,7 @@ public class Plugin : BaseUnityPlugin
     private static readonly string AchievementsPath = Path.Combine(DataPath, "achievements.json");
     private static readonly string StatsPath = Path.Combine(DataPath, "stats.json");
 
-    private static Dictionary<string, bool> _achievementStates;
+    private static Dictionary<string, AchievementData> _achievementStates;
     private static Dictionary<string, int> _statStatesInt = new();
     private static Dictionary<string, float> _statStatesFloat = new();
     private static Material _uiWoodMaterial;
@@ -39,6 +39,7 @@ public class Plugin : BaseUnityPlugin
         _logger = Logger;
         _logger.LogInfo("Made by Bread-Chan 🩷. Hallo to Kirigiri~ 👋");
 
+        MigrateAchievements();
         LoadAchievements();
         LoadStats();
 
@@ -82,19 +83,27 @@ public class Plugin : BaseUnityPlugin
         {
             if (!_achievementStates.ContainsKey(pchName))
             {
-                _achievementStates[pchName] = pbAchieved;
+                _achievementStates[pchName] = new AchievementData { Gotten = pbAchieved };
                 SaveAchievements();
             }
 
-            pbAchieved = _achievementStates[pchName] || pbAchieved;
+            pbAchieved = _achievementStates[pchName].Gotten || pbAchieved;
         }
 
         [HarmonyPatch(typeof(SteamUserStats), "SetAchievement")]
         [HarmonyPrefix]
         private static void SetAchievement(string pchName)
         {
-            _achievementStates[pchName] = true;
-            if (Enum.TryParse<ACHIEVEMENTTYPE>(pchName, out var achievement)) TriggerAch(achievement);
+            if (!_achievementStates.ContainsKey(pchName))
+                _achievementStates[pchName] = new AchievementData();
+
+            var data = _achievementStates[pchName];
+            data.Gotten = true;
+            data.TimeAchieved = DateTime.UtcNow;
+
+            if (Enum.TryParse<ACHIEVEMENTTYPE>(pchName, out var achievement))
+                TriggerAch(achievement);
+
             SaveAchievements();
         }
 
@@ -192,6 +201,7 @@ public class Plugin : BaseUnityPlugin
             _popupCanvas = new GameObject("AchievementPopupCanvas");
             var canvas = _popupCanvas.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 9999;
             _popupCanvas.AddComponent<CanvasScaler>();
             _popupCanvas.AddComponent<GraphicRaycaster>();
             DontDestroyOnLoad(_popupCanvas);
@@ -297,9 +307,15 @@ public class Plugin : BaseUnityPlugin
 
     #endregion
 
-    #region Helper Functions
+    #region Helpers
 
     #region Achievements
+
+    private class AchievementData
+    {
+        public bool Gotten { get; set; }
+        public DateTime? TimeAchieved { get; set; }
+    }
 
     private static void LoadAchievements()
     {
@@ -307,14 +323,15 @@ public class Plugin : BaseUnityPlugin
             try
             {
                 var json = File.ReadAllText(AchievementsPath);
-                _achievementStates = JsonConvert.DeserializeObject<Dictionary<string, bool>>(json);
+                _achievementStates = JsonConvert.DeserializeObject<Dictionary<string, AchievementData>>(json)
+                                     ?? new Dictionary<string, AchievementData>();
             }
             catch
             {
-                _achievementStates = new Dictionary<string, bool>();
+                _achievementStates = new Dictionary<string, AchievementData>();
             }
         else
-            _achievementStates = new Dictionary<string, bool>();
+            _achievementStates = new Dictionary<string, AchievementData>();
     }
 
     private static void SaveAchievements()
@@ -327,6 +344,38 @@ public class Plugin : BaseUnityPlugin
         catch (Exception e)
         {
             _logger.LogError($"Failed to save achievements: {e}");
+        }
+    }
+
+    // NOTE: This is used to migrate the achievement JSON file to newer format past v0.0.4
+    private static void MigrateAchievements()
+    {
+        if (!File.Exists(AchievementsPath)) return;
+
+        try
+        {
+            var json = File.ReadAllText(AchievementsPath);
+
+            if (json.Contains("Gotten")) return;
+
+            var oldData = JsonConvert.DeserializeObject<Dictionary<string, bool>>(json);
+            if (oldData == null) return;
+
+            var newData = new Dictionary<string, AchievementData>();
+            foreach (var kvp in oldData)
+                newData[kvp.Key] = new AchievementData
+                {
+                    Gotten = kvp.Value,
+                    TimeAchieved = kvp.Value ? DateTime.UtcNow : null
+                };
+
+            var newJson = JsonConvert.SerializeObject(newData, Formatting.Indented);
+            File.WriteAllText(AchievementsPath, newJson);
+            _logger.LogInfo("Achievements migrated to new format with timestamps.");
+        }
+        catch (Exception e)
+        {
+            _logger.LogError($"Failed to migrate achievements: {e}");
         }
     }
 
