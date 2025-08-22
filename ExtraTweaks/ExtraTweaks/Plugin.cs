@@ -97,12 +97,6 @@ public class Plugin : BaseUnityPlugin
     {
         var serverSettings = Resources.Load<ServerSettings>("PhotonServerSettings");
 
-        _logger.LogDebug(serverSettings.AppSettings.AppIdRealtime);
-        _logger.LogDebug(serverSettings.AppSettings.AppIdChat);
-        _logger.LogDebug(serverSettings.AppSettings.AppIdVoice);
-        _logger.LogDebug(serverSettings.AppSettings.AppIdFusion);
-        _logger.LogDebug(serverSettings.AppSettings.FixedRegion);
-
         serverSettings.AppSettings.AppIdRealtime =
             GetValueOrDefault(_appIdRealtime.Value, serverSettings.AppSettings.AppIdRealtime);
         serverSettings.AppSettings.AppIdChat =
